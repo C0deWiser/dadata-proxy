@@ -11,7 +11,7 @@ use Illuminate\Support\Carbon;
  * @property null|Carbon $created_at
  * @property null|Carbon $updated_at
  */
-class Name extends Model implements Apiable
+class Email extends Model implements Apiable
 {
     protected $primaryKey = 'source';
     protected $keyType = 'string';

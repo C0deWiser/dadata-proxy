@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -19,7 +20,10 @@ class BaseController extends Controller
         return $this->base($request, 'https://suggestions.dadata.ru');
     }
 
-    public function base(Request $request, string $baseUrl, $payload = null): \Illuminate\Http\Client\Response
+    /**
+     * @throws ConnectionException
+     */
+    protected function base(Request $request, string $baseUrl, $payload = null): \Illuminate\Http\Client\Response
     {
         $pendingRequest = Http::baseUrl($baseUrl);
 

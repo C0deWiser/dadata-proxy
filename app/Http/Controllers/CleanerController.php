@@ -2,38 +2,69 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Apiable;
+use App\Models\Email;
 use App\Models\Name;
+use App\Models\Phone;
+use App\Services\CacheControl;
+use App\Services\Cached;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class CleanerController extends BaseController
 {
-    public function names(Request $request)
+    protected function clean(Request $request, Builder $builder, string $service)
     {
-        $names = $request->all();
+        $cache = new Cached($builder, $request->all());
+        $cc = new CacheControl($request->header('Cache-Control'));
 
-        $known = Name::query()
-            ->findMany($names)
-            ->modelKeys();
+        if (! $cc->onlyIfCached()) {
 
-        $unknown = array_diff($names, $known);
+            $unknown = $cc->noCache()
+                // Запросим у dadata все записи
+                ? $request->all()
+                // Запросим у dadata только те записи, которых нет в кеше.
+                // Всё что старше max-age мы, типа, «не знаем».
+                : $cache->unknown($cc->maxAge());
 
-        if ($unknown) {
-            $response = $this->base($request, 'https://cleaner.dadata.ru', $unknown);
+            if ($unknown) {
+                try {
+                    $response = $this->base($request, 'https://cleaner.dadata.ru', $unknown);
 
-            Log::debug('clean/name', $unknown);
+                    Log::debug("clean/$service", $unknown);
 
-            foreach ($response->json() as $item) {
-                Name::query()->create([
-                    'source'   => $item['source'],
-                    'response' => array_filter($item, fn($key) => $key !== 'source', ARRAY_FILTER_USE_KEY),
-                ]);
+                    if ($cc->noStore()) {
+                        // В кеш не сохраняем, отдаем и всё
+                        return $response->json();
+                    }
+
+                    $cache->insertOrUpdate($response->json());
+
+                } catch (Throwable) {
+                    //
+                }
             }
         }
 
-        return Name::query()
-            ->findMany($names)
-            ->map(fn(Name $name) => $name->toApi())
-            ->toArray();
+        return $cache->fetch($cc->maxAgeWithStale());
+    }
+
+    public function name(Request $request)
+    {
+        return $this->clean($request, Name::query(), 'name');
+    }
+
+    public function phone(Request $request)
+    {
+        return $this->clean($request, Phone::query(), 'phone');
+    }
+
+    public function email(Request $request)
+    {
+        return $this->clean($request, Email::query(), 'email');
     }
 }
