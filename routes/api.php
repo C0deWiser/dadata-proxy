@@ -11,6 +11,3 @@ Route::post('api/{version}/clean/email', [CleanerController::class, 'email']);
 
 Route::post('/api/{version}/clean/{path?}', [BaseController::class, 'cleaner'])
     ->where('path', '.*');
-
-Route::post('/suggestions/api/{version}/{path?}', [BaseController::class, 'suggestions'])
-    ->where('path', '.*');

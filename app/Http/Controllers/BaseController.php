@@ -15,11 +15,6 @@ class BaseController extends Controller
         return $this->base($request, 'https://cleaner.dadata.ru');
     }
 
-    public function suggestions(Request $request)
-    {
-        return $this->base($request, 'https://suggestions.dadata.ru');
-    }
-
     /**
      * @throws ConnectionException
      */
