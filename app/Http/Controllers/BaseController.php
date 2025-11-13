@@ -18,9 +18,9 @@ class BaseController extends Controller
     /**
      * @throws ConnectionException
      */
-    protected function base(Request $request, string $baseUrl, $payload = null): \Illuminate\Http\Client\Response
+    protected function base(Request $request, string $baseUrl, $payload = null, bool $async = false): \Illuminate\Http\Client\Response
     {
-        $pendingRequest = Http::baseUrl($baseUrl);
+        $pendingRequest = Http::baseUrl($baseUrl)->async($async);
 
         $headers = $request->headers->all();
         $headers['host'] = str($baseUrl)->after('://')->toString();

@@ -8,6 +8,7 @@ use App\Models\Name;
 use App\Models\Phone;
 use App\Services\CacheControl;
 use App\Services\Cached;
+use GuzzleHttp\Exception\ClientException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
@@ -22,32 +23,73 @@ class CleanerController extends BaseController
         $cache = new Cached($builder, $request->all());
         $cc = new CacheControl($request->header('Cache-Control'));
 
-        if (! $cc->onlyIfCached()) {
+        Log::debug($request->path(), $request->all());
+        if ($cc->toArray()) {
+            Log::debug('Cache-Control', $cc->toArray());
+        }
+
+        if ($cc->onlyIfCached()) {
+            Log::debug('Return only cached records');
+        } else {
+
+            if ($cc->noCache()) {
+                Log::debug('Dont use cache, must revalidate');
+            } elseif ($cc->maxAgeWithFresh()) {
+                Log::debug("Records older than {$cc->maxAgeWithFresh()} second(s) are stale");
+            }
 
             $unknown = $cc->noCache()
                 // Запросим у dadata все записи
                 ? $request->all()
                 // Запросим у dadata только те записи, которых нет в кеше.
                 // Всё что старше max-age мы, типа, «не знаем».
-                : $cache->unknown($cc->maxAge());
+                : $cache->unknown($cc->maxAgeWithFresh());
 
             if ($unknown) {
-                try {
-                    $response = $this->base($request, 'https://cleaner.dadata.ru', $unknown);
 
-                    Log::debug("clean/$service", $unknown);
+                Log::debug('Unknown records', $unknown);
+
+                try {
+                    $response = $this->base(
+                        $request,
+                        'https://cleaner.dadata.ru',
+                        $unknown
+                    )->throw();
+
+                    Log::info("clean/$service", $unknown);
 
                     if ($cc->noStore()) {
+                        Log::debug('No-store, just respond');
+
                         // В кеш не сохраняем, отдаем и всё
                         return $response->json();
                     }
 
                     $cache->insertOrUpdate($response->json());
 
-                } catch (Throwable) {
-                    //
+                } catch (ConnectionException|RequestException $e) {
+
+                    if ($e instanceof RequestException) {
+                        Log::error($e->getMessage(), (array) $e->response->json());
+                    } else {
+                        Log::error($e->getMessage());
+                    }
+
+                    // Обычно ошибку мы тоже проксируем.
+                    // Но если мы пытались освежить stale записи, то ошибку возвращать не нужно.
+                    if ($cc->maxStale()) {
+                        Log::debug('Allowed to use stale cache, dont respond with an error');
+                    } else {
+                        return $e instanceof RequestException
+                            ? $e->response
+                            : response()->json([], 500);
+                    }
                 }
             }
+        }
+
+        if ($cc->maxAgeWithStale()) {
+            Log::debug("Return records younger than {$cc->maxAgeWithStale()} second(s)");
         }
 
         return $cache->fetch($cc->maxAgeWithStale());

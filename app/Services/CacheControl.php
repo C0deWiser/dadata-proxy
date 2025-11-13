@@ -60,6 +60,15 @@ class CacheControl
     }
 
     /**
+     * Указывает, что клиент хочет получить ответ,
+     * который будет актуален как минимум указанное количество секунд.
+     */
+    public function minFresh(): ?int
+    {
+        return $this->get('min-fresh');
+    }
+
+    /**
      * Указывает на необходимость отправить запрос на сервер для валидации
      * ресурса перед использованием закешированных данных.
      */
@@ -86,7 +95,19 @@ class CacheControl
     }
 
     /**
-     * Максимальное время актуальности с учетом stale.
+     * Максимальное время актуальности с учетом min-fresh.
+     */
+    public function maxAgeWithFresh(): ?int
+    {
+        if ($this->maxAge()) {
+            return $this->maxAge() - (int) $this->minFresh();
+        }
+
+        return null;
+    }
+
+    /**
+     * Максимальное время актуальности с учетом max-stale.
      */
     public function maxAgeWithStale(): ?int
     {
@@ -101,5 +122,19 @@ class CacheControl
         }
 
         return null;
+    }
+
+    public function toArray(): array
+    {
+        return array_filter([
+            'max-age'           => $this->maxAge(),
+            'max-stale'         => $this->maxStale(),
+            'min-fresh'         => $this->minFresh(),
+            'no-cache'          => $this->noCache(),
+            'no-store'          => $this->noStore(),
+            'only-if-cached'    => $this->onlyIfCached(),
+            //'max-age-and-fresh' => $this->maxAgeWithFresh(),
+            //'max-age-and-stale' => $this->maxAgeWithStale(),
+        ]);
     }
 }
