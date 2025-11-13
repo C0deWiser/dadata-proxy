@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Address;
 use App\Models\Apiable;
 use App\Models\Email;
 use App\Models\Name;
+use App\Models\Passport;
 use App\Models\Phone;
+use App\Models\Vehicle;
 use App\Services\CacheControl;
 use App\Services\Cached;
 use GuzzleHttp\Exception\ClientException;
@@ -18,7 +21,7 @@ use Throwable;
 
 class CleanerController extends BaseController
 {
-    protected function clean(Request $request, Builder $builder, string $service)
+    protected function clean(Request $request, Builder $builder)
     {
         $cache = new Cached($builder, $request->all());
         $cc = new CacheControl($request->header('Cache-Control'));
@@ -56,7 +59,7 @@ class CleanerController extends BaseController
                         $unknown
                     )->throw();
 
-                    Log::info("clean/$service", $unknown);
+                    Log::info($request->path(), $unknown);
 
                     if ($cc->noStore()) {
                         Log::debug('No-store, just respond');
@@ -97,16 +100,31 @@ class CleanerController extends BaseController
 
     public function name(Request $request)
     {
-        return $this->clean($request, Name::query(), 'name');
+        return $this->clean($request, Name::query());
     }
 
     public function phone(Request $request)
     {
-        return $this->clean($request, Phone::query(), 'phone');
+        return $this->clean($request, Phone::query());
     }
 
     public function email(Request $request)
     {
-        return $this->clean($request, Email::query(), 'email');
+        return $this->clean($request, Email::query());
+    }
+
+    public function address(Request $request)
+    {
+        return $this->clean($request, Address::query());
+    }
+
+    public function passport(Request $request)
+    {
+        return $this->clean($request, Passport::query());
+    }
+
+    public function vehicle(Request $request)
+    {
+        return $this->clean($request, Vehicle::query());
     }
 }

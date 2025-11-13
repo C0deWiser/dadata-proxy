@@ -144,9 +144,12 @@ $cleanName = app(DaDataService::class)->client
 
 ## Кешируемые сервисы
 
+* [стандартизация адресов](https://dadata.ru/api/clean/address/)
 * [стандартизация ФИО](https://dadata.ru/api/clean/name/)
 * [стандартизация телефонов](https://dadata.ru/api/clean/phone/)
+* [стандартизация паспортов](https://dadata.ru/api/clean/passport/)
 * [стандартизация email](https://dadata.ru/api/clean/email/)
+* [стандартизация автомобилей](https://dadata.ru/api/clean/vehicle/)
 
-Остальные `clean` сервисы проксируются без кеширования.
+Остальные `clean` сервисы, ежели такие остались, проксируются без кеширования.
 
