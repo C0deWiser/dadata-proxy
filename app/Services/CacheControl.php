@@ -100,7 +100,7 @@ class CacheControl
     public function maxAgeWithFresh(): ?int
     {
         if ($this->maxAge()) {
-            return $this->maxAge() - (int) $this->minFresh();
+            return $this->maxAge() - (integer) $this->minFresh();
         }
 
         return null;
@@ -118,7 +118,7 @@ class CacheControl
             }
 
             // Использовать протухшие на определенное время
-            return $this->maxAge() + (int) $this->maxStale();
+            return $this->maxAge() + (integer) $this->maxStale();
         }
 
         return null;

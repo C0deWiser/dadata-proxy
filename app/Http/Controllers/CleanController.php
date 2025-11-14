@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Address;
-use App\Models\Apiable;
 use App\Models\Email;
 use App\Models\Name;
 use App\Models\Passport;
@@ -11,15 +10,13 @@ use App\Models\Phone;
 use App\Models\Vehicle;
 use App\Services\CacheControl;
 use App\Services\Cached;
-use GuzzleHttp\Exception\ClientException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Throwable;
 
-class CleanerController extends BaseController
+class CleanController extends Controller
 {
     protected function clean(Request $request, Builder $builder)
     {
@@ -53,16 +50,14 @@ class CleanerController extends BaseController
                 Log::debug('Unknown records', $unknown);
 
                 try {
-                    $response = $this->base(
-                        $request,
-                        'https://cleaner.dadata.ru',
-                        $unknown
-                    )->throw();
+                    $response = $this
+                        ->base($request, 'https://cleaner.dadata.ru', $unknown)
+                        ->throw();
 
                     Log::info($request->path(), $unknown);
 
                     if ($cc->noStore()) {
-                        Log::debug('No-store, just respond');
+                        Log::debug('No store, just respond');
 
                         // В кеш не сохраняем, отдаем и всё
                         return $response->json();
@@ -83,9 +78,12 @@ class CleanerController extends BaseController
                     if ($cc->maxStale()) {
                         Log::debug('Allowed to use stale cache, dont respond with an error');
                     } else {
+                        Log::debug('Respond with an error');
                         return $e instanceof RequestException
                             ? $e->response
-                            : response()->json([], 500);
+                            : response()->json([
+                                'message' => $e->getMessage(),
+                            ], 500);
                     }
                 }
             }
@@ -95,7 +93,26 @@ class CleanerController extends BaseController
             Log::debug("Return records younger than {$cc->maxAgeWithStale()} second(s)");
         }
 
-        return $cache->fetch($cc->maxAgeWithStale());
+
+        return response()->json(
+            $cache->fetch($cc->maxAgeWithStale()),
+            // Заголовок Age указывает на возраст кеша.
+            // Ну и показывает, откуда мы взяли запись.
+            headers: ['Age' => $cache->age()]
+        );
+    }
+
+    public function fallback(Request $request)
+    {
+        try {
+            return $this->base($request, 'https://cleaner.dadata.ru')->throw();
+        } catch (ConnectionException|RequestException $e) {
+            return $e instanceof RequestException
+                ? $e->response
+                : response()->json([
+                    'message' => $e->getMessage(),
+                ], 500);
+        }
     }
 
     public function name(Request $request)

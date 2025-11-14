@@ -2,13 +2,17 @@
 
 namespace App\Services;
 
-use App\Models\Apiable;
+use App\Models\Cleanable;
+use DateTimeInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
 
 class Cached
 {
+    protected int $age = 0;
+
     public function __construct(
         protected Builder $builder,
         protected array $keys
@@ -16,6 +20,13 @@ class Cached
         //
     }
 
+    /**
+     * Возвращает коллекцию записей.
+     *
+     * @param  null|int  $maxAge  Записи не должны быть старше (в секундах).
+     *
+     * @return Collection<integer, Model&Cleanable>
+     */
     protected function collection(?int $maxAge = null): Collection
     {
         return $this->builder->clone()
@@ -27,6 +38,10 @@ class Cached
 
     /**
      * Ключи, которые есть в кеше.
+     *
+     * @param  null|int  $maxAge  Записи не должны быть старше (в секундах).
+     *
+     * @return array<integer, string>
      */
     public function known(?int $maxAge = null): array
     {
@@ -35,6 +50,10 @@ class Cached
 
     /**
      * Ключи, которых нет в кеше.
+     *
+     * @param  null|int  $maxAge  Записи не должны быть старше (в секундах).
+     *
+     * @return array<integer, string>
      */
     public function unknown(?int $maxAge = null): array
     {
@@ -44,19 +63,65 @@ class Cached
     /**
      * Возвращает из кеша записи.
      *
-     * @param  null|int  $maxAge  Записи не должны быть старше...
+     * @param  null|int  $maxAge  Записи не должны быть старше (в секундах).
      *
-     * @return array
+     * @return array<integer, array>
      */
     public function fetch(?int $maxAge = null): array
     {
-        return $this->collection($maxAge)
-            ->map(fn(Apiable $item) => $item->toApi())
+        return $this
+            ->withAge(
+                $this->collection($maxAge)
+            )
+            ->map(
+                fn(Cleanable $item) => $item->toApi()
+            )
             ->toArray();
     }
 
     /**
+     * Как давно запись находится в кеше?
+     *
+     * @return int Секунды
+     */
+    public function age(): int
+    {
+        return $this->age;
+    }
+
+    /**
+     * Вычислить, как давно запись находится в кеше?
+     *
+     * @param  Collection<integer, Model&Cleanable>  $collection
+     *
+     * @return Collection<integer, Model&Cleanable>
+     */
+    protected function withAge(Collection $collection): Collection
+    {
+        $this->age = 0;
+
+        $oldest = $collection->min(
+            fn(Cleanable $item) => $item->created_at
+        );
+
+        if ($oldest instanceof DateTimeInterface) {
+            $diff = $oldest->diff(now());
+
+            $totalDays = $diff->format('%a');
+            $hours = $diff->format('%h');
+            $minutes = $diff->format('%i');
+            $seconds = $diff->format('%s');
+
+            $this->age = $totalDays * 24 * 60 * 60 + $hours * 60 * 60 + $minutes * 60 + $seconds;
+        }
+
+        return $collection;
+    }
+
+    /**
      * Добавляет в кеш массив записей.
+     *
+     * @param  array<integer, array>  $items  Сырой ответ.
      */
     public function insertOrUpdate(array $items): void
     {
@@ -69,7 +134,7 @@ class Cached
 
             $model->touch();
 
-            Log::debug($model::class.' was '.($model->wasRecentlyCreated ? 'created' : 'updated'), [
+            Log::debug(class_basename($model::class).' was '.($model->wasRecentlyCreated ? 'created' : 'updated'), [
                 'source'     => $model->getKey(),
                 'updated_at' => $model->getAttribute('updated_at'),
             ]);
