@@ -13,10 +13,8 @@ class Cached
 {
     protected int $age = 0;
 
-    public function __construct(
-        protected Builder $builder,
-        protected array $keys
-    ) {
+    public function __construct(protected Builder $builder, protected array $keys)
+    {
         //
     }
 
@@ -64,18 +62,15 @@ class Cached
      * Возвращает из кеша записи.
      *
      * @param  null|int  $maxAge  Записи не должны быть старше (в секундах).
+     * @param  boolean  $hit  Увеличить счетчик использования кеша.
      *
      * @return array<integer, array>
      */
-    public function fetch(?int $maxAge = null): array
+    public function fetch(?int $maxAge = null, bool $hit = false): array
     {
         return $this
-            ->withAge(
-                $this->collection($maxAge)
-            )
-            ->map(
-                fn(Cleanable $item) => $item->toApi()
-            )
+            ->withAge($this->collection($maxAge))
+            ->map(fn(Cleanable $item) => $item->hit((integer) $hit)->toApi())
             ->toArray();
     }
 

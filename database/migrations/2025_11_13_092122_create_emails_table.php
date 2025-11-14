@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('emails', function (Blueprint $table) {
             $table->string('source')->primary();
             $table->json('response');
+            $table->unsignedBigInteger('hits')->default(0);
             $table->timestamps();
         });
     }

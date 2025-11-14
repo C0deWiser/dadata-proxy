@@ -95,7 +95,7 @@ class CleanController extends Controller
 
 
         return response()->json(
-            $cache->fetch($cc->maxAgeWithStale()),
+            $cache->fetch($cc->maxAgeWithStale(), empty($unknown)),
             // Заголовок Age указывает на возраст кеша.
             // Ну и показывает, откуда мы взяли запись.
             headers: ['Age' => $cache->age()]

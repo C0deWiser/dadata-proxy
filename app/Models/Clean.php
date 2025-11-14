@@ -15,7 +15,21 @@ abstract class Clean extends Model implements Cleanable
     {
         return [
             'response' => 'json:unicode',
+            'hits'     => 'integer',
         ];
+    }
+
+    public function hit(int $count): static
+    {
+        if ($count) {
+            $this->hits = $this->hits + $count;
+
+            $this->timestamps = false;
+            $this->save();
+            $this->timestamps = true;
+        }
+
+        return $this;
     }
 
     public function toApi(): array
