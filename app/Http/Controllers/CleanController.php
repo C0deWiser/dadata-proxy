@@ -93,7 +93,6 @@ class CleanController extends Controller
             Log::debug("Return records younger than {$cc->maxAgeWithStale()} second(s)");
         }
 
-
         return response()->json(
             $cache->fetch($cc->maxAgeWithStale(), empty($unknown)),
             // Заголовок Age указывает на возраст кеша.
