@@ -62,7 +62,7 @@ class ImportCommand extends Command
             if (! $header) {
                 $header = $line;
 
-                if (! isset($header['source'])) {
+                if (! in_array('source', $header)) {
                     $this->error("First row must be a header and contains, at least, source column.");
                     return;
                 }
