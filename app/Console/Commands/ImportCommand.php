@@ -77,10 +77,10 @@ class ImportCommand extends Command
             $response = Arr::except($row, 'source');
 
             if ($builder->clone()->whereKey($source)->doesntExist()) {
-                $builder->clone()->updateOrCreate(
-                    ['source' => $source],
-                    ['response' => $response]
-                );
+                $builder->clone()->insert([
+                    'source'   => $source,
+                    'response' => $response
+                ]);
                 $this->info($source);
             } else {
                 $this->warn($source);
