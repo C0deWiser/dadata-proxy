@@ -68,7 +68,6 @@ class ImportCommand extends Command
                 }
 
                 continue;
-
             }
 
             $row = array_combine($header, $line);

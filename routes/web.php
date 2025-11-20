@@ -2,6 +2,4 @@
 
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return redirect()->away('https://dadata.ru');
-});
+Route::get('/', fn() => redirect()->away(config('app.redirect')));

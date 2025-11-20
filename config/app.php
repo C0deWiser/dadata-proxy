@@ -53,6 +53,7 @@ return [
     */
 
     'url' => env('APP_URL', 'http://localhost'),
+    'redirect' => env('APP_REDIRECT', 'http://localhost'),
 
     /*
     |--------------------------------------------------------------------------
