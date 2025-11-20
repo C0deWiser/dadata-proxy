@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class Cached
 {
@@ -121,18 +122,22 @@ class Cached
     public function insertOrUpdate(array $items): void
     {
         foreach ($items as $item) {
-            $model = $this->builder->clone()->updateOrCreate(
-                ['source' => $item['source']],
-                [
-                    'response' => array_filter($item, fn($key) => $key !== 'source', ARRAY_FILTER_USE_KEY),
+            try {
+                $model = $this->builder->clone()->updateOrCreate(
+                    ['source' => $item['source']],
+                    [
+                        'response' => array_filter($item, fn($key) => $key !== 'source', ARRAY_FILTER_USE_KEY),
+                    ]);
+
+                $model->touch();
+
+                Log::debug(class_basename($model::class).' was '.($model->wasRecentlyCreated ? 'created' : 'updated'), [
+                    'source'     => $model->getKey(),
+                    'updated_at' => $model->getAttribute('updated_at'),
                 ]);
-
-            $model->touch();
-
-            Log::debug(class_basename($model::class).' was '.($model->wasRecentlyCreated ? 'created' : 'updated'), [
-                'source'     => $model->getKey(),
-                'updated_at' => $model->getAttribute('updated_at'),
-            ]);
+            } catch (Throwable $e) {
+                Log::error($e->getMessage(), $item);
+            }
         }
     }
 }
