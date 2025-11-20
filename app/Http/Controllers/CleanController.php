@@ -54,7 +54,10 @@ class CleanController extends Controller
                         ->base($request, 'https://cleaner.dadata.ru', $unknown)
                         ->throw();
 
-                    Log::info($request->path(), $unknown);
+                    Log::info($request->path(), [
+                        'request'  => $unknown,
+                        'response' => $response->json(),
+                    ]);
 
                     if ($cc->noStore()) {
                         Log::debug('No store, just respond');
